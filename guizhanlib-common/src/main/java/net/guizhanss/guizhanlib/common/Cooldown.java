@@ -3,8 +3,8 @@ package net.guizhanss.guizhanlib.common;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class provides cooldown feature, based on keys.
@@ -14,8 +14,8 @@ import java.util.Map;
  */
 public final class Cooldown<K> {
 
-    private final Map<K, Long> useMap = new HashMap<>(); // record the last use time of the key
-    private final Map<K, Long> timeMap = new HashMap<>(); // record the cooldown duration of the key
+    private final Map<K, Long> useMap = new ConcurrentHashMap<>(); // record the last use time of the key
+    private final Map<K, Long> timeMap = new ConcurrentHashMap<>(); // record the cooldown duration of the key
 
     /**
      * Query if the key can be used.

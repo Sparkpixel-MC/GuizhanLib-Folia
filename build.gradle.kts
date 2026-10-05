@@ -30,16 +30,18 @@ subprojects {
     apply(plugin = "com.gradleup.shadow")
     apply(plugin = "org.sonarqube")
 
-    dependencies {
-        fun compileOnlyAndTestImplementation(dependencyNotation: Any) {
-            compileOnly(dependencyNotation)
-            testImplementation(dependencyNotation)
-        }
+    lombok {
+        version = "1.18.48" // bundled version does not support JDK 25 compilation
+    }
 
+    dependencies {
         api("com.google.code.findbugs:jsr305:3.0.2")
-        compileOnlyAndTestImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
-        testImplementation("org.junit.jupiter:junit-jupiter-api:5.12.1")
-        testImplementation("org.junit.jupiter:junit-jupiter-engine:5.12.1")
+        // compile against folia-api (superset of paper-api with regionized schedulers) for Folia compatibility
+        compileOnly("dev.folia:folia-api:26.2.build.7-beta")
+        testImplementation("io.papermc.paper:paper-api:26.2.build.129-stable")
+        testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.3")
+        testImplementation("org.junit.jupiter:junit-jupiter-engine:6.1.3")
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
     }
 
     java {

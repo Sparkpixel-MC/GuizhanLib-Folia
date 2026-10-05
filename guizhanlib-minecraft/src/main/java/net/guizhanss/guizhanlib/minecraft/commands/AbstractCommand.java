@@ -12,9 +12,9 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -28,7 +28,8 @@ import java.util.stream.Collectors;
 @Getter
 public abstract class AbstractCommand {
 
-    private final Set<SubCommand> subCommands = new HashSet<>();
+    // commands can be executed on different region threads under Folia
+    private final Set<SubCommand> subCommands = ConcurrentHashMap.newKeySet();
     private final AbstractCommand parent;
     private final String name;
     private final BiFunction<AbstractCommand, CommandSender, String> description;

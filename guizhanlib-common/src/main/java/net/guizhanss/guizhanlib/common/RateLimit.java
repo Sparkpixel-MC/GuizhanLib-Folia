@@ -3,8 +3,8 @@ package net.guizhanss.guizhanlib.common;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This package provides rate limit feature.
@@ -16,8 +16,10 @@ public final class RateLimit<K> {
 
     private final long limitTime;
     private final int limitVisits;
-    private final Map<K, Long> timeMap = new HashMap<>(); // the first visit time
-    private final Map<K, Integer> visitMap = new HashMap<>(); // time of visits
+    private final Map<K, Visit> visits = new ConcurrentHashMap<>(); // record of visits per key
+
+    private record Visit(long startTime, int visits) {
+    }
 
     /**
      * Constructor.
@@ -48,20 +50,19 @@ public final class RateLimit<K> {
     public int getUsed(@Nonnull K key) {
         Preconditions.checkArgument(key != null, "key should not be null");
 
-        Long time = timeMap.get(key);
-        Integer visits = visitMap.get(key);
+        Visit visit = visits.get(key);
 
         // Lack of record, this should not happen
-        if (time == null || visits == null) {
+        if (visit == null) {
             return 0;
         }
 
         // Time out
-        if (System.nanoTime() - time >= limitTime) {
+        if (System.nanoTime() - visit.startTime() >= limitTime) {
             return 0;
         }
 
-        return visits;
+        return visit.visits();
     }
 
     /**
@@ -86,23 +87,27 @@ public final class RateLimit<K> {
     public boolean add(@Nonnull K key, int visits) {
         Preconditions.checkArgument(key != null, "key should not be null");
 
-        Long time = timeMap.get(key);
-        Integer visited = visitMap.get(key);
+        long now = System.nanoTime();
+        boolean[] success = new boolean[1];
 
-        // Lack of record, just init
-        if (time == null || visited == null) {
-            reset(key);
-            timeMap.put(key, System.nanoTime());
-            visitMap.put(key, visits);
-            return true;
-        }
+        // compute is atomic per key, so the limit check and update cannot interleave across threads
+        this.visits.compute(key, (k, visit) -> {
+            // Lack of record or time out, start a new period
+            if (visit == null || now - visit.startTime() >= limitTime) {
+                success[0] = true;
+                return new Visit(now, visits);
+            }
 
-        if (getRemaining(key) < visits) {
-            return false;
-        } else {
-            visitMap.put(key, visited + visits);
-            return true;
-        }
+            if (limitVisits - visit.visits() < visits) {
+                success[0] = false;
+                return visit;
+            }
+
+            success[0] = true;
+            return new Visit(visit.startTime(), visit.visits() + visits);
+        });
+
+        return success[0];
     }
 
     /**
@@ -125,7 +130,6 @@ public final class RateLimit<K> {
     public void reset(@Nonnull K key) {
         Preconditions.checkArgument(key != null, "key should not be null");
 
-        timeMap.remove(key);
-        visitMap.remove(key);
+        visits.remove(key);
     }
 }

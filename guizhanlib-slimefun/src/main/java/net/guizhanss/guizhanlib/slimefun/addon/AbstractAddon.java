@@ -54,7 +54,8 @@ public abstract class AbstractAddon extends JavaPlugin implements SlimefunAddon 
     private final String bugTrackerURL;
 
     private AddonConfig config;
-    private int slimefunTickCount;
+    // written by the repeating tick-count task, read from any thread
+    private volatile int slimefunTickCount;
     private Scheduler scheduler;
     private boolean loading;
     private boolean enabling;

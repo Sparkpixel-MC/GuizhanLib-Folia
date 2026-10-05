@@ -3,10 +3,12 @@ package net.guizhanss.guizhanlib.updater;
 import com.google.common.base.Preconditions;
 import lombok.AccessLevel;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 /**
@@ -60,7 +62,39 @@ public final class GuizhanBuildsUpdater {
         Preconditions.checkNotNull(updaterConfig);
 
         var task = new GuizhanBuildsUpdaterTask(new GuizhanBuildsUpdater(plugin, file, owner, repository, branch, updaterConfig));
-        task.runTaskLater(plugin, 1);
+        if (isFolia()) {
+            // the updater task performs blocking network IO, so it must run on the async scheduler on Folia
+            Bukkit.getAsyncScheduler().runDelayed(plugin, t -> task.run(), 1 * 50L, TimeUnit.MILLISECONDS);
+        } else {
+            task.runTaskLater(plugin, 1);
+        }
+    }
+
+    // Folia detection, checked once and cached
+    private static volatile Boolean isFolia;
+
+    /**
+     * Whether the server is a Folia-based server.
+     * The detection is performed once and cached.
+     *
+     * @return Whether the server is Folia-based.
+     */
+    private static boolean isFolia() {
+        Boolean folia = isFolia;
+        if (folia != null) {
+            return folia;
+        }
+        synchronized (GuizhanBuildsUpdater.class) {
+            if (isFolia == null) {
+                try {
+                    Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+                    isFolia = true;
+                } catch (ClassNotFoundException e) {
+                    isFolia = false;
+                }
+            }
+            return isFolia;
+        }
     }
 
     private GuizhanBuildsUpdater(Plugin plugin, File file, String owner, String repository, String branch, UpdaterConfig updaterConfig) {

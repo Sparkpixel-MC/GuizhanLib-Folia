@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.6.0
+
+- Added Folia support. `Scheduler` now routes to the global region / async / entity / region schedulers on Folia-based servers, and falls back to the legacy Bukkit scheduler on Paper-based servers. Added `runAtEntity(...)` and `runAtRegion(...)` methods.
+- The auto updater now runs on the async scheduler on Folia-based servers.
+- Made `Cooldown`, `RateLimit` and command sub-command storage thread-safe for multi-region access.
+- Compile against `folia-api` instead of `paper-api`.
+- `RateLimit` now resets the visit counter when the time period expires (previously the counter could become permanently stale after the first expiry).
+
+- 适配 Folia。`Scheduler` 现在在 Folia 服务端上使用全局区域 / 异步 / 实体 / 区域调度器，在 Paper 服务端上回退到传统 Bukkit 调度器。新增 `runAtEntity(...)` 与 `runAtRegion(...)` 方法。
+- 自动更新在 Folia 服务端上改用异步调度器运行。
+- `Cooldown`、`RateLimit` 及命令子命令存储已改为线程安全实现，以适配多区域线程访问。
+- 编译依赖由 `paper-api` 改为 `folia-api`。
+- `RateLimit` 在时间周期过期后会重置访问计数（此前首次过期后计数可能永久失效）。
+- Removed the unused PaperLib dependency from the shaded jar.
+- Updated to the latest APIs (`folia-api` 26.2, tests against `paper-api` 26.2) and bumped the build to JDK 25. Output bytecode still targets Java 17.
+- Fixed the previously broken tests by upgrading to MockBukkit 26.2 and JUnit 6.
+
+- 从阴影 Jar 中移除了未使用的 PaperLib 依赖。
+- 升级到最新 API（编译使用 `folia-api` 26.2，测试使用 `paper-api` 26.2），构建环境升级至 JDK 25。产物字节码仍兼容 Java 17。
+- 升级 MockBukkit 26.2 与 JUnit 6，修复了此前失效的测试。
+
 ## 2.5.0
 
 - Update `MinecraftVersionUtil` to support new year-based versions.

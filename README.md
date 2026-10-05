@@ -5,6 +5,14 @@
 A Java library that helps developing Slimefun addons.  
 一个帮助粘液科技附属开发的 Java 库。
 
+## Folia Compatibility | Folia 兼容
+
+GuizhanLib supports both Paper-based and Folia-based servers (including the new year-based versions such as Paper 26.x). The `Scheduler` class automatically routes tasks to the global region / async / entity / region schedulers on Folia, and falls back to the legacy Bukkit scheduler on Paper.  
+GuizhanLib 同时支持 Paper 系与 Folia 系服务端（包括 26.x 等新年份版本）。`Scheduler` 会自动在 Folia 上使用全局区域 / 异步 / 实体 / 区域调度器，在 Paper 上回退到传统 Bukkit 调度器。
+
+Addons using this library must declare `folia-supported: true` in their own `plugin.yml` to load on Folia servers.  
+使用本库的插件需在自身的 `plugin.yml` 中声明 `folia-supported: true` 才能在 Folia 服务端加载。
+
 ## Usage | 如何使用
 
 ### Maven
