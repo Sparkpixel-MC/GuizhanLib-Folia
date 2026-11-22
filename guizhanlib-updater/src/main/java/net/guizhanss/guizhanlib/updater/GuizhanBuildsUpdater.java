@@ -3,12 +3,10 @@ package net.guizhanss.guizhanlib.updater;
 import com.google.common.base.Preconditions;
 import lombok.AccessLevel;
 import lombok.Getter;
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.File;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 /**
@@ -16,7 +14,11 @@ import java.util.logging.Level;
  * Guizhan Builds.
  *
  * @author ybw0014
+ * @deprecated Guizhan Builds shuts down on 2026-11-15 12:00 (UTC+8), after which
+ *             this updater will stop working. Use {@link GuizhanResourcesUpdater}
+ *             instead. Scheduled for removal in 4.0.
  */
+@Deprecated(forRemoval = true)
 @SuppressWarnings("ConstantConditions")
 @Getter(AccessLevel.PACKAGE)
 public final class GuizhanBuildsUpdater {
@@ -62,39 +64,7 @@ public final class GuizhanBuildsUpdater {
         Preconditions.checkNotNull(updaterConfig);
 
         var task = new GuizhanBuildsUpdaterTask(new GuizhanBuildsUpdater(plugin, file, owner, repository, branch, updaterConfig));
-        if (isFolia()) {
-            // the updater task performs blocking network IO, so it must run on the async scheduler on Folia
-            Bukkit.getAsyncScheduler().runDelayed(plugin, t -> task.run(), 1 * 50L, TimeUnit.MILLISECONDS);
-        } else {
-            task.runTaskLater(plugin, 1);
-        }
-    }
-
-    // Folia detection, checked once and cached
-    private static volatile Boolean isFolia;
-
-    /**
-     * Whether the server is a Folia-based server.
-     * The detection is performed once and cached.
-     *
-     * @return Whether the server is Folia-based.
-     */
-    private static boolean isFolia() {
-        Boolean folia = isFolia;
-        if (folia != null) {
-            return folia;
-        }
-        synchronized (GuizhanBuildsUpdater.class) {
-            if (isFolia == null) {
-                try {
-                    Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
-                    isFolia = true;
-                } catch (ClassNotFoundException e) {
-                    isFolia = false;
-                }
-            }
-            return isFolia;
-        }
+        UpdaterScheduling.runUpdater(plugin, task);
     }
 
     private GuizhanBuildsUpdater(Plugin plugin, File file, String owner, String repository, String branch, UpdaterConfig updaterConfig) {

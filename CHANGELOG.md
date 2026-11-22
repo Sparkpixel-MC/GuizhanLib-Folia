@@ -1,25 +1,110 @@
 # Changelog
 
-## 2.6.0
+## 3.2.0
 
-- Added Folia support. `Scheduler` now routes to the global region / async / entity / region schedulers on Folia-based servers, and falls back to the legacy Bukkit scheduler on Paper-based servers. Added `runAtEntity(...)` and `runAtRegion(...)` methods.
-- The auto updater now runs on the async scheduler on Folia-based servers.
-- Made `Cooldown`, `RateLimit` and command sub-command storage thread-safe for multi-region access.
-- Compile against `folia-api` instead of `paper-api`.
-- `RateLimit` now resets the visit counter when the time period expires (previously the counter could become permanently stale after the first expiry).
+### Folia & Minecraft 26.3
 
-- 适配 Folia。`Scheduler` 现在在 Folia 服务端上使用全局区域 / 异步 / 实体 / 区域调度器，在 Paper 服务端上回退到传统 Bukkit 调度器。新增 `runAtEntity(...)` 与 `runAtRegion(...)` 方法。
-- 自动更新在 Folia 服务端上改用异步调度器运行。
-- `Cooldown`、`RateLimit` 及命令子命令存储已改为线程安全实现，以适配多区域线程访问。
-- 编译依赖由 `paper-api` 改为 `folia-api`。
-- `RateLimit` 在时间周期过期后会重置访问计数（此前首次过期后计数可能永久失效）。
-- Removed the unused PaperLib dependency from the shaded jar.
-- Updated to the latest APIs (`folia-api` 26.2, tests against `paper-api` 26.2) and bumped the build to JDK 25. Output bytecode still targets Java 17.
-- Fixed the previously broken tests by upgrading to MockBukkit 26.2 and JUnit 6.
+- Synced with upstream `ybw0014/guizhanlib` up to 3.1.0, including the 3.0 module restructure and the new auto-updaters.
+- Updated the build to Paper/Folia 26.3 and Java 25, which is the minimum runtime for Minecraft 26.3.
+- Added a Folia-aware `Scheduler` wrapper in `guizhanlib-minecraft`, exposed through `AbstractJavaPlugin#getPluginScheduler()` and `AbstractJavaPlugin.scheduler()`. Global, async, entity and region tasks are routed to the matching Folia scheduler and fall back to the Bukkit scheduler on Paper.
+- Auto-updaters now run their blocking network checks on the async scheduler on Folia instead of the legacy Bukkit scheduler.
+- Made `Cooldown` and `AbstractCommand` sub-command storage thread-safe for multi-region access.
 
-- 从阴影 Jar 中移除了未使用的 PaperLib 依赖。
-- 升级到最新 API（编译使用 `folia-api` 26.2，测试使用 `paper-api` 26.2），构建环境升级至 JDK 25。产物字节码仍兼容 Java 17。
-- 升级 MockBukkit 26.2 与 JUnit 6，修复了此前失效的测试。
+### 构建与兼容
+
+- 同步上游 `ybw0014/guizhanlib` 至 3.1.0，包含 3.0 的模块重组与新的自动更新器。
+- 构建升级至 Paper/Folia 26.3 与 Java 25（Minecraft 26.3 的最低运行时要求）。
+- `guizhanlib-minecraft` 新增 Folia 感知的 `Scheduler` 包装，可通过 `AbstractJavaPlugin#getPluginScheduler()` 与 `AbstractJavaPlugin.scheduler()` 获取。全局 / 异步 / 实体 / 区域任务会路由到对应的 Folia 调度器，在 Paper 上回退到 Bukkit 调度器。
+- 自动更新器在 Folia 上改用异步调度器执行阻塞的网络检查，不再使用传统 Bukkit 调度器。
+- `Cooldown` 与 `AbstractCommand` 的子命令存储改为线程安全实现，以适配多区域线程访问。
+
+## 3.1.0
+
+### Updater
+
+- Added auto-updaters for Guizhan Resources, Modrinth, Hangar and GitHub Releases, sharing a single `AbstractUpdater` base: asynchronous checks, version comparison with prerelease awareness (falling back to string inequality for unparseable versions), SHA-256/SHA-512 checksum verification, and verified atomic installation into the server's update folder.
+- Guizhan Resources updater: `GuizhanResourcesUpdater.start(plugin, file, slug[, channel][, config])`, defaulting to `https://resources.guizhanss.com/api/v1` and the `release` channel.
+- `UpdaterConfig` gained optional `userAgent`, `apiKey`, `minecraftVersion` and `platform` options (still not read from config.yml).
+- The existing `GuizhanBuildsUpdater` is deprecated for removal; it will stop working when Guizhan Builds shuts down.
+
+#### Migrating from Guizhan Builds
+
+- Replace your call: `GuizhanBuildsUpdater.start(plugin, file, owner, repository, branch[, config])` → `GuizhanResourcesUpdater.start(plugin, file, slug[, channel][, config])`. `checkOnly` still limits the updater to notify-only; a custom builds `baseUrl` must be removed or replaced — only the old default address is substituted automatically.
+- Guizhan Builds identifiers (`owner/repo:branch`) cannot be mapped to Guizhan Resources slugs automatically. Create or import your project on Guizhan Resources, note its slug (the `<slug>` part of the project page URL), and confirm the actual channel slug on the project's versions page (do not assume `release`).
+- The version string of each release on the platform must match the released JAR's own `PluginMeta#getVersion()` (from plugin.yml or paper-plugin.yml), without a `v` prefix. Versions that both parse numerically are compared numerically; the string-inequality fallback (which may re-download or downgrade) only applies when either version cannot be parsed.
+- Plugins shading an older GuizhanLib do not upgrade automatically when the library releases — update the dependency and re-publish your plugin.
+- `GuizhanBuildsUpdater` will stop working when Guizhan Builds shuts down; the deprecated class will be removed.
+
+### 更新器
+
+- 新增鬼斩资源站、Modrinth、Hangar 与 GitHub Releases 自动更新器，共享单一 `AbstractUpdater` 基类：异步检查、带预发布感知的版本比较（不可解析时退化为字符串比较）、SHA-256/SHA-512 校验，以及校验通过后原子安装到服务器更新目录。
+- 资源站更新器：`GuizhanResourcesUpdater.start(plugin, file, slug[, channel][, config])`，默认基址 `https://resources.guizhanss.com/api/v1`，channel 默认 `release`。
+- `UpdaterConfig` 新增可选的 `userAgent`、`apiKey`、`minecraftVersion`、`platform` 配置（仍然不从 config.yml 读取）。
+- 现有 `GuizhanBuildsUpdater` 已弃用并计划移除；构建站停服后其将停止工作。
+
+#### 从鬼斩构建站迁移
+
+- 替换调用：`GuizhanBuildsUpdater.start(plugin, file, owner, repository, branch[, config])` → `GuizhanResourcesUpdater.start(plugin, file, slug[, channel][, config])`。`checkOnly` 仍表示仅通知不下载；自定义的构建站 `baseUrl` 必须移除或替换——只有旧默认地址会被自动替换。
+- 构建站标识（`owner/repo:branch`）无法自动映射为资源站 slug。请在资源站创建或导入项目，记下 slug（项目页 URL 中的 `<slug>` 部分），并在项目的版本页面核对实际的 channel slug（不要默认认为是 `release`）。
+- 平台上每个发布版本的版本号必须与该发布 JAR 自身的 `PluginMeta#getVersion()`（来自 plugin.yml 或 paper-plugin.yml）一致，且不带 `v` 前缀。两侧都能按数字解析时进行数值比较；仅当任一版本无法解析时才退化为字符串比较（可能重复下载甚至降级）。
+- shade 了旧版 GuizhanLib 的插件不会随库发布自动升级——请更新依赖并重新发布插件。
+- 构建站停服后 `GuizhanBuildsUpdater` 将停止工作；该已弃用类将被移除。
+
+## 3.0.0
+
+### Breaking Changes
+
+- Reorganized modules: added `guizhanlib-rebar` module for Rebar addon bases; moved `YamlConfig`, `AbstractJavaPlugin`, `Environment`, `Logger`, `PathBuilder` and `Scheduler` into `guizhanlib-minecraft`.
+- Restructured addon base classes: rewrote `AbstractJavaPlugin`, removed `Scheduler`, and slimmed down `AbstractAddon` in rebar and slimefun modules.
+- Removed deprecated `MinecraftVersionUtil` shims and the Slimefun tick counter in `AbstractAddon`.
+- Removed the `guizhanlib-slimefun-cn` module (no real content).
+- Removed dead utility APIs: `RateLimit`, `JsonUtil` and `NewBlockStorageUtil`.
+
+### Fixes
+
+- Adjusted member visibility in `AbstractJavaPlugin`.
+- Updater: replaced deprecated `Plugin#getDescription` with `PluginMeta#getVersion`.
+
+### Build & CI
+
+- Upgraded to Gradle 9.8.0 with JDK 25 toolchain (release 21) and freefair-lombok 9.7.0; removed sonarqube.
+- CI now builds with JDK 25 and the foojay toolchain resolver.
+- Declared `junit-platform-launcher` required by Gradle 9, and removed duplicated test dependencies from module scripts.
+- `guizhanlib-all` now generates aggregated Javadoc.
+- `gradle build` now runs tests and produces the shadow jar per module, plus an `-original` unshaded jar; `gradle publish` uploads snapshots directly, and for release versions it closes and releases the staging repo automatically.
+- Removed jitpack config; moved `renovate.json` into `.github`.
+
+### Documentation
+
+- Split README by language, added Gradle usage and badges, and merged `dev.md` into `AGENTS.md`.
+- Documented library loading with mirror support.
+
+### 破坏性变更
+
+- 重组模块结构：新增 `guizhanlib-rebar` 模块，提供 Rebar 附属基类；`YamlConfig`、`AbstractJavaPlugin`、`Environment`、`Logger`、`PathBuilder` 与 `Scheduler` 迁入 `guizhanlib-minecraft`。
+- 重构附属基类：重写 `AbstractJavaPlugin`，移除 `Scheduler`，精简 rebar 与 slimefun 模块的 `AbstractAddon`。
+- 移除已弃用的 `MinecraftVersionUtil` 兼容层与 `AbstractAddon` 的粘液刻计数。
+- 移除 `guizhanlib-slimefun-cn` 模块（无实际内容）。
+- 移除无用工具 API：`RateLimit`、`JsonUtil` 与 `NewBlockStorageUtil`。
+
+### 修复
+
+- 调整 `AbstractJavaPlugin` 的成员可见性。
+- 更新器：使用 `PluginMeta#getVersion` 替换已弃用的 `Plugin#getDescription`。
+
+### 构建与 CI
+
+- 升级至 Gradle 9.8.0，使用 JDK 25 工具链（release 21）与 freefair-lombok 9.7.0；移除 sonarqube。
+- CI 改用 JDK 25 构建，并添加 foojay 工具链解析器。
+- 声明 Gradle 9 所需的 `junit-platform-launcher`，并移除各模块脚本中重复的测试依赖。
+- `guizhanlib-all` 现在生成聚合 Javadoc。
+- `gradle build` 现在会运行测试并为各模块产出 shadow jar 及 `-original` 未打包 jar；`gradle publish` 对快照版本直传快照仓库，对正式版本自动关闭并发布 staging 仓库。
+- 移除 jitpack 配置；`renovate.json` 移入 `.github`。
+
+### 文档
+
+- README 按语言拆分，新增 Gradle 使用说明与徽章，`dev.md` 并入 `AGENTS.md`。
+- 补充了使用镜像加载库的文档。
 
 ## 2.5.0
 

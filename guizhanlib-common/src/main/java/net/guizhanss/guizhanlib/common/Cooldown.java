@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class Cooldown<K> {
 
+    // Folia may run different regions on different threads, so both maps must be concurrent
     private final Map<K, Long> useMap = new ConcurrentHashMap<>(); // record the last use time of the key
     private final Map<K, Long> timeMap = new ConcurrentHashMap<>(); // record the cooldown duration of the key
 

@@ -1,0 +1,118 @@
+# GuizhanLib
+
+[English](/README.md) | **简体中文**
+
+[![Maven Central](https://img.shields.io/maven-central/v/net.guizhanss/guizhanlib-all.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22net.guizhanss%22%20AND%20a:%22GuizhanLib%22)
+![Java 25+](https://img.shields.io/badge/Java-25%2B-blue)
+[![Javadoc](https://javadoc.io/badge2/net.guizhanss/guizhanlib-all/javadoc.svg)](https://javadoc.io/doc/net.guizhanss/guizhanlib-all)
+
+一个帮助粘液科技/Pylon附属开发的 Java 库。
+
+GuizhanLib 支持运行 Minecraft 26.3 的 Paper 与 Folia 服务端。库使用 Folia API 编译，
+内置辅助类在检测到 Folia 服务端时会将调度与更新检查路由到区域 / 实体 / 全局 / 异步调度器。
+使用 GuizhanLib 的附属插件需在自身的插件元数据中声明 `folia-supported: true` 才能在 Folia 上加载。
+
+## 如何使用
+
+### Gradle
+
+```kotlin
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("net.guizhanss:guizhanlib-all:REPLACE WITH VERSION")
+}
+```
+
+如果你使用 Shadow 插件，需要将 GuizhanLib 迁移到你的包中，避免与其他插件中使用的 GuizhanLib 冲突：
+
+```kotlin
+tasks.shadowJar {
+    relocate("net.guizhanss.guizhanlib", "YOUR PACKAGE NAME HERE.guizhanlib")
+}
+```
+
+### Maven
+
+将`guizhanlib-all`（包含所有包）或者你需要使用的包添加为依赖项：
+
+```
+    <dependency>
+        <groupId>net.guizhanss</groupId>
+        <artifactId>guizhanlib-all</artifactId>
+        <version>REPLACE WITH VERSION</version>
+        <scope>compile</scope>
+    </dependency>
+```
+
+在`build`中，你需要将 GuizhanLib 迁移到你的包中，避免与其他插件中使用的 GuizhanLib 冲突
+（如果已存在 `maven-shade-plugin` 的配置，只需要添加 relocation 即可:
+
+```
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.3.0</version>
+
+                <configuration>
+                    <!-- 你可以添加下面这一行，去除所有库中未使用的类，来减少生成jar的大小，非必须，但建议开启 -->
+                    <minimizeJar>true</minimizeJar>
+                    <relocations>
+                        <!-- 重要: 你需要将以下relocation(迁移)部分添加到你的pom.xml中 -->
+                        <relocation>
+                            <pattern>net.guizhanss.guizhanlib</pattern>
+                            <shadedPattern>(YOUR PACKAGE NAME HERE).guizhanlib</shadedPattern>
+                        </relocation>
+                    </relocations>
+
+                    <filters>
+                        <filter>
+                            <artifact>*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                </configuration>
+
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+```
+
+## 自动更新
+
+`guizhanlib-updater` 模块提供鬼斩资源站、Modrinth、Hangar 与 GitHub Releases 的自动更新器。从鬼斩构建站更新器迁移？参见[从鬼斩构建站迁移](/CHANGELOG.md#从鬼斩构建站迁移)。
+
+## 更新日志
+
+[Changelog](/CHANGELOG.md)
+
+## 库加载
+
+如果你的附属需要运行时加载库,可以使用 `guizhanlib-libraries` 模块中的 `BukkitLibraryManager`。仓库按添加顺序依次尝试,可将镜像添加在 Maven Central 之前以加速下载:
+
+```java
+var manager = new BukkitLibraryManager(this);
+// 可选: 镜像,按添加顺序尝试
+manager.addRepository("https://maven.aliyun.com/repository/public/");
+manager.addRepository("https://maven-central.storage-download.googleapis.com/maven2/");
+// 兜底: Maven Central 面向构建期依赖,大规模直连会被限流；库首次下载后会缓存到本地
+manager.addMavenCentral();
+
+manager.loadLibrary(Library.builder()
+        .groupId("com.google.code.gson")
+        .artifactId("gson")
+        .version("2.10.1")
+        .build());
+```

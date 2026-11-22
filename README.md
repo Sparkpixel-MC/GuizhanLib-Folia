@@ -1,24 +1,43 @@
 # GuizhanLib
 
+**English** | [简体中文](/README.zh_cn.md)
+
 [![Maven Central](https://img.shields.io/maven-central/v/net.guizhanss/guizhanlib-all.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22net.guizhanss%22%20AND%20a:%22GuizhanLib%22)
+![Java 25+](https://img.shields.io/badge/Java-25%2B-blue)
+[![Javadoc](https://javadoc.io/badge2/net.guizhanss/guizhanlib-all/javadoc.svg)](https://javadoc.io/doc/net.guizhanss/guizhanlib-all)
 
-A Java library that helps developing Slimefun addons.  
-一个帮助粘液科技附属开发的 Java 库。
+A Java library that helps developing Slimefun/Pylon addons.
 
-## Folia Compatibility | Folia 兼容
+GuizhanLib supports Paper and Folia servers running Minecraft 26.3. It compiles against the
+Folia API, and the built-in helpers route scheduling and update checks through the region,
+entity, global and async schedulers when they detect a Folia server. Addons that use GuizhanLib
+must declare `folia-supported: true` in their own plugin metadata to load on Folia.
 
-GuizhanLib supports both Paper-based and Folia-based servers (including the new year-based versions such as Paper 26.x). The `Scheduler` class automatically routes tasks to the global region / async / entity / region schedulers on Folia, and falls back to the legacy Bukkit scheduler on Paper.  
-GuizhanLib 同时支持 Paper 系与 Folia 系服务端（包括 26.x 等新年份版本）。`Scheduler` 会自动在 Folia 上使用全局区域 / 异步 / 实体 / 区域调度器，在 Paper 上回退到传统 Bukkit 调度器。
+## Usage
 
-Addons using this library must declare `folia-supported: true` in their own `plugin.yml` to load on Folia servers.  
-使用本库的插件需在自身的 `plugin.yml` 中声明 `folia-supported: true` 才能在 Folia 服务端加载。
+### Gradle
 
-## Usage | 如何使用
+```kotlin
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("net.guizhanss:guizhanlib-all:REPLACE WITH VERSION")
+}
+```
+
+If you use the Shadow plugin, relocate the library to your own package to avoid conflicts with GuizhanLib bundled in other plugins:
+
+```kotlin
+tasks.shadowJar {
+    relocate("net.guizhanss.guizhanlib", "YOUR PACKAGE NAME HERE.guizhanlib")
+}
+```
 
 ### Maven
 
-Add `guizhanlib-all` (which includes all sub modules) or **the modules you need** as dependency:  
-将`guizhanlib-all`（包含所有包）或者你需要使用的包添加为依赖项：
+Add `guizhanlib-all` (which includes all sub modules) or **the modules you need** as dependency:
 
 ```
     <dependency>
@@ -29,9 +48,7 @@ Add `guizhanlib-all` (which includes all sub modules) or **the modules you need*
     </dependency>
 ```
 
-You will need to relocate the library classes if you use it for addon development.  
-在`build`中，你需要将 GuizhanLib 迁移到你的包中，避免与其他插件中使用的 GuizhanLib 冲突
-（如果已存在 `maven-shade-plugin` 的配置，只需要添加 relocation 即可:
+You will need to relocate the library classes if you use it for addon development.
 
 ```
         <plugins>
@@ -42,11 +59,9 @@ You will need to relocate the library classes if you use it for addon developmen
 
                 <configuration>
                     <!-- Add the following field to remove all unused classes and reduce the size of generated jar file. Not required, but recommended  -->
-                    <!-- 你可以添加下面这一行，去除所有库中未使用的类，来减少生成jar的大小，非必须，但建议开启 -->
                     <minimizeJar>true</minimizeJar>
                     <relocations>
                         <!-- IMPORTANT: add the following relocation -->
-                        <!-- 重要: 你需要将以下relocation(迁移)部分添加到你的pom.xml中 -->
                         <relocation>
                             <pattern>net.guizhanss.guizhanlib</pattern>
                             <shadedPattern>(YOUR PACKAGE NAME HERE).guizhanlib</shadedPattern>
@@ -75,6 +90,30 @@ You will need to relocate the library classes if you use it for addon developmen
         </plugins>
 ```
 
-## Changelog | 更新日志
+## Auto-updates
+
+GuizhanLib ships auto-updaters for Guizhan Resources, Modrinth, Hangar and GitHub Releases in the `guizhanlib-updater` module. Migrating from the Guizhan Builds updater? See [Migrating from Guizhan Builds](/CHANGELOG.md#migrating-from-guizhan-builds).
+
+## Changelog
 
 [Changelog](/CHANGELOG.md)
+
+## Library loading
+
+If your addon needs runtime libraries, use `BukkitLibraryManager` from the `guizhanlib-libraries` module. Repositories are tried in insertion order, so add a mirror before Maven Central for faster downloads:
+
+```java
+var manager = new BukkitLibraryManager(this);
+// Optional: mirrors, tried in order
+manager.addRepository("https://maven.aliyun.com/repository/public/");
+manager.addRepository("https://maven-central.storage-download.googleapis.com/maven2/");
+// Last resort: Maven Central is for build-time dependencies, heavy direct
+// usage hits its rate limits; jars are cached locally after the first download
+manager.addMavenCentral();
+
+manager.loadLibrary(Library.builder()
+        .groupId("com.google.code.gson")
+        .artifactId("gson")
+        .version("2.10.1")
+        .build());
+```

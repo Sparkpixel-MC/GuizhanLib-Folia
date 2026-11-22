@@ -1,12 +1,12 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import java.time.Duration
 
 plugins {
     `java-library`
     `maven-publish`
     signing
-    id("io.freefair.lombok") version "8.13.1"
-    id("com.gradleup.shadow") version "8.3.6"
-    id("org.sonarqube") version "6.1.0.5360"
+    id("io.freefair.lombok") version "9.7.0"
+    id("com.gradleup.shadow") version "9.6.1"
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
 }
 
@@ -16,9 +16,9 @@ allprojects {
     repositories {
         mavenCentral()
         maven("https://jitpack.io/")
-        maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
         maven("https://repo.papermc.io/repository/maven-public/")
         maven("https://repo.alessiodp.com/releases/")
+        maven("https://repo.xenondevs.xyz/releases/")
     }
 }
 
@@ -28,28 +28,33 @@ subprojects {
     apply(plugin = "signing")
     apply(plugin = "io.freefair.lombok")
     apply(plugin = "com.gradleup.shadow")
-    apply(plugin = "org.sonarqube")
-
-    lombok {
-        version = "1.18.48" // bundled version does not support JDK 25 compilation
-    }
 
     dependencies {
         api("com.google.code.findbugs:jsr305:3.0.2")
         // compile against folia-api (superset of paper-api with regionized schedulers) for Folia compatibility
-        compileOnly("dev.folia:folia-api:26.2.build.7-beta")
-        testImplementation("io.papermc.paper:paper-api:26.2.build.129-stable")
+        compileOnly("dev.folia:folia-api:26.3.build.26-stable")
+        // keep in sync with the Paper API build MockBukkit 26.3 is built against
+        testImplementation("io.papermc.paper:paper-api:26.3.build.200-stable")
         testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.3")
         testImplementation("org.junit.jupiter:junit-jupiter-engine:6.1.3")
         testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
+        testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v26.3:4.123.0")
     }
 
     java {
         disableAutoTargetJvm()
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        // Minecraft 26.3 (Paper/Folia) requires Java 25
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = JavaVersion.VERSION_25
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
         withJavadocJar()
         withSourcesJar()
+    }
+
+    tasks.withType<JavaCompile>().configureEach {
+        options.release.set(25)
     }
 
     tasks.withType<Test> {
@@ -60,12 +65,12 @@ subprojects {
         archiveClassifier = ""
     }
 
-    sonar {
-        properties {
-            property("sonar.projectKey", "ybw0014_GuizhanLib")
-            property("sonar.organization", "ybw0014")
-            property("sonar.host.url", "https://sonarcloud.io")
-        }
+    tasks.named<Jar>("jar") {
+        archiveClassifier = "original"
+    }
+
+    tasks.named("build") {
+        dependsOn(tasks.named("shadowJar"))
     }
 
     publishing {
@@ -115,11 +120,21 @@ subprojects {
     }
 }
 
+tasks.named("publish") {
+    dependsOn(tasks.named("publishToSonatype"))
+    dependsOn(tasks.named("closeAndReleaseSonatypeStagingRepository"))
+}
+
 nexusPublishing {
     repositories {
         sonatype {
             nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
             snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
         }
+    }
+    // Central Portal validation can take several minutes on a multi-module build
+    transitionCheckOptions {
+        maxRetries = 240
+        delayBetween = Duration.ofSeconds(5)
     }
 }

@@ -20,7 +20,10 @@ import java.util.logging.Level;
  * Auto update task.
  *
  * @author ybw0014
+ * @deprecated Companion of the deprecated {@link GuizhanBuildsUpdater}; see its
+ *             Javadoc for details.
  */
+@Deprecated(forRemoval = true)
 class GuizhanBuildsUpdaterTask extends BukkitRunnable {
 
     private final GuizhanBuildsUpdater updater;
@@ -103,7 +106,7 @@ class GuizhanBuildsUpdaterTask extends BukkitRunnable {
             buildInfo = buildResp.get("data").getAsJsonObject();
 
             // check if there is update
-            var pluginVersion = updater.getPlugin().getDescription().getVersion();
+            var pluginVersion = updater.getPlugin().getPluginMeta().getVersion();
             var target = updater.getPlugin().getName() + "-" + pluginVersion + ".jar";
             return !target.equals(buildInfo.get("target").getAsString());
         } catch (Exception ex) {
